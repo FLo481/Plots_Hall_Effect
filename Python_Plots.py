@@ -37,7 +37,7 @@ def getmagneticfield(i, pathtoFile):
             for myline in myfile:   
                 break
         magneticfield = re.findall(pattern, myline)
-        result = magneticfield[i].replace('KGs', '')
+        result = float(magneticfield[i].replace('KGs', ''))
     else:
         result = 0
         print("getmagneticfield(i) can only take values 0 and 1")
@@ -64,6 +64,7 @@ def deriv_of_rho(derive_by, point1, point2, point3):
 
 def readinvalues_Hallcoefficient(dirName):
 
+    s = math.sqrt(10) #to get the standard error instead of the standard deviation
     data = {}
 
     i = 0
@@ -82,7 +83,7 @@ def readinvalues_Hallcoefficient(dirName):
             readindata = np.genfromtxt(dirName + "\\" + file, delimiter="\t", skip_header = 2, dtype=None)
 
             data[i, 0] = float(getmagneticfield(0, dirName + "\\" + file)) #B
-            data[i, 1] = float(getmagneticfield(1, dirName + "\\" + file)) #sigma_B
+            data[i, 1] = float(getmagneticfield(1, dirName + "\\" + file)/s) #sigma_B
 
             for j in range(2,29):
                 data[i, j] = float(readindata[j - 2])
@@ -102,6 +103,7 @@ def calc_resistivity ():
 
     d_sample = 350E-6 #thickness of sample in m
     d_sample_sigma = 25E-6 #thickness uncertainty of sample in m
+    s = math.sqrt(10) #to get the standard error instead of the standard deviation
     curr_numb = [12, 14, 21, 41]
     folders = []
     files = []
@@ -133,25 +135,25 @@ def calc_resistivity ():
                     files.append(os.path.join(root, file))
         
         #calculate transresistance
-
+        print("Reading in from ", folder)
         for file in files:
             print("Reading in ",file)
             if str(curr_numb[0]) in file:
                 
                 data = np.genfromtxt(folder + "\\" + file, delimiter="\t", skip_header = 2, dtype=None)
                 R_B_12_43[i, 0] = data[3]/data[1]
-                R_B_12_43[i, 1] = uncertpropdiv(data[3], data[4], data[1], data[2])
+                R_B_12_43[i, 1] = uncertpropdiv(data[3], data[4]/s, data[1], data[2]/s)
                 R_B_12_43[i, 2] = getmagneticfield(0, folder + "\\" + file)
-                R_B_12_43[i, 3] = getmagneticfield(1, folder + "\\" + file)
+                R_B_12_43[i, 3] = getmagneticfield(1, folder + "\\" + file)/s
                 #print("R_12_43 =", R_B_12_43[i, 0], "+/-", R_B_12_43[i, 1],"Ohm" ,"@ B_12_43" , R_B_12_43[i, 2], "+/-", R_B_12_43[i, 3], "kG")
 
             if str(curr_numb[1]) in file:
                 
                 data = np.genfromtxt(folder + "\\" + file, delimiter="\t", skip_header = 2, dtype=None)
                 R_B_14_23[i, 0] = data[3]/data[1]
-                R_B_14_23[i, 1] = uncertpropdiv(data[3], data[4], data[1], data[2])
+                R_B_14_23[i, 1] = uncertpropdiv(data[3], data[4]/s, data[1], data[2]/s)
                 R_B_14_23[i, 2] = getmagneticfield(0, folder + "\\" + file)
-                R_B_14_23[i, 3] = getmagneticfield(1, folder + "\\" + file)
+                R_B_14_23[i, 3] = getmagneticfield(1, folder + "\\" + file)/s
                 #print("R_14_23 =", R_B_14_23[i, 0], "+/-", R_B_14_23[i, 1],"Ohm" ,"@ B_14_23 =" , R_B_14_23[i, 2], "+/-", R_B_14_23[i, 3], "kG")
 
 
@@ -159,18 +161,18 @@ def calc_resistivity ():
                 
                 data = np.genfromtxt(folder + "\\" + file, delimiter="\t", skip_header = 2, dtype=None)
                 R_B_21_34[i, 0] = data[3]/data[1]
-                R_B_21_34[i, 1] = uncertpropdiv(data[3], data[4], data[1], data[2])
+                R_B_21_34[i, 1] = uncertpropdiv(data[3], data[4]/s, data[1], data[2]/s)
                 R_B_21_34[i, 2] = getmagneticfield(0, folder + "\\" + file)
-                R_B_21_34[i, 3] = getmagneticfield(1, folder + "\\" + file)
+                R_B_21_34[i, 3] = getmagneticfield(1, folder + "\\" + file)/s
                 #print("R_21_34 =", R_21_34, "+/-", R_21_34_sigma,"Ohm" ,"@ B_21_34 =", B_21_34, "+/-", B_21_34_sigma, "kG")
 
             if str(curr_numb[3]) in file:
                 
                 data = np.genfromtxt(folder + "\\" + file, delimiter="\t", skip_header = 2, dtype=None)
                 R_B_41_32[i, 0] = data[3]/data[1]
-                R_B_41_32[i, 1] = uncertpropdiv(data[3], data[4], data[1], data[2])
+                R_B_41_32[i, 1] = uncertpropdiv(data[3], data[4]/s, data[1], data[2]/s)
                 R_B_41_32[i, 2] = getmagneticfield(0, folder + "\\" + file)
-                R_B_41_32[i, 3] = getmagneticfield(1, folder + "\\" + file)
+                R_B_41_32[i, 3] = getmagneticfield(1, folder + "\\" + file)/s
                 #print("R_41_32 =", R_41_32, "+/-", R_41_32_sigma,"Ohm" ,"@ B_41_32 =", B_41_32 , "+/-", B_41_32_sigma , "kG")
         
         #print("\n")
@@ -212,6 +214,7 @@ def calc_Hall_coefficient():
     e = 16.022E-19
     d = 350E-6
     d_sigma = 25E-6
+    s = math.sqrt(10) #to get the standard error instead of the standard deviation
 
     dirName = r"C:\Users\Flo\Desktop\LabCourse\Hall Effect\Hall coefficient data 17.01.20\Flo"
     
@@ -221,6 +224,7 @@ def calc_Hall_coefficient():
     y_err_plt = []
     denom = {}
     num = {}
+
 
     data, n = readinvalues_Hallcoefficient(dirName)
 
@@ -236,12 +240,12 @@ def calc_Hall_coefficient():
     for l in range(n):
         x_plt.append(data[l, 0]*1E-1)
         denom[l, 0] = data[l, 3] * data[l, 0] * 1E-1
-        denom[l, 1] = uncertpropmult(data[l, 0], data[l, 1], data[l, 3], data[l, 4])
+        denom[l, 1] = uncertpropmult(data[l, 0], data[l, 1]/s, data[l, 3], data[l, 4]/s)
         num[l, 0] = 0.25*(calc_V_H(data[l, 9], data[l, 11])+calc_V_H(data[l, 13], data[l, 15])+calc_V_H(data[l, 21], data[l, 23])+calc_V_H(data[l, 25], data[l, 27]))*d
-        num[l, 1] = uncertpropmult(num[l, 0], uncertpropadd(0.5*uncertpropadd(data[l, 10], data[l, 12], 0, 0), 0.5*uncertpropadd(data[l, 14], data[l, 16], 0, 0), 0.5*uncertpropadd(data[l, 22], data[l, 24], 0, 0), 0.5*uncertpropadd(data[l, 26], data[l, 28], 0, 0)) , d, d_sigma)
+        num[l, 1] = uncertpropmult(num[l, 0], uncertpropadd(0.5*uncertpropadd(data[l, 10]/s, data[l, 12]/s, 0, 0), 0.5*uncertpropadd(data[l, 14]/s, data[l, 16]/s, 0, 0), 0.5*uncertpropadd(data[l, 22]/s, data[l, 24]/s, 0, 0), 0.5*uncertpropadd(data[l, 26]/s, data[l, 28]/s, 0, 0)) , d, d_sigma)
         y_plt.append(num[l, 0]/denom[l, 0])
         y_err_plt.append(uncertpropdiv(num[l, 0], num[l, 1], denom[l, 0], denom[l, 1]))
-        print("R_H =", y_plt[l], "+/-", y_err_plt[l])
+        #print("R_H =", y_plt[l], "+/-", y_err_plt[l])
 
     #removes the first value, because it has a huge error bar
     del x_plt[0]
