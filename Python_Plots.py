@@ -4,6 +4,7 @@ import re
 import matplotlib.pyplot as plt
 import os
 import sympy as sym
+import csv
 
 def uncertpropdiv(num, num_sigma, denom, denom_sigma):
     value = num/denom
@@ -62,39 +63,55 @@ def deriv_of_rho(derive_by, point1, point2, point3):
 
     return result
 
-def readinvalues_Hallcoefficient(dirName):
+def readinvalues_Hall_coeff(dirName):
 
     s = math.sqrt(10) #to get the standard error instead of the standard deviation
     data = {}
+    i = 0 #counts the files
+    j = 0 #for skipping the first two lines
+    line = 0 #counts the lines in a file
+    pattern = '....KGs' #pattern for magnetic field and magnetic field error search
 
-    i = 0
+   
 
     for root, directory, files in os.walk(dirName):
-        for file in files:
-           if '.txt' in file:
-                files.append(os.path.join(root, file))
+         for file in files:
+             if '.txt' in file:
+                 files.append(os.path.join(root, file))
      
 
     for file in files:
-        #print(file)
-
-        if str(i) in file:
-            print("Reading in", file)
-            readindata = np.genfromtxt(dirName + "\\" + file, delimiter="\t", skip_header = 2, dtype=None)
-
-            data[i, 0] = float(getmagneticfield(0, dirName + "\\" + file)) #B
-            data[i, 1] = float(getmagneticfield(1, dirName + "\\" + file)/s) #sigma_B
-
-            for j in range(2,29):
-                data[i, j] = float(readindata[j - 2])
+        with open(dirName + "\\" + file) as f:
+            reader = csv.reader(f, delimiter = '\t')
+            for row in reader:
+                if j > 1 and float(row[0]) != 0.0:
+                    data[line, 0] = magneticfield
+                    data[line, 1] = magneticfield_error
+                    for k in range (2, 29):
+                        data[line, k] = float(row[k - 2])
+                        #print(data[line, k])
+                    line += 1
+  
+                elif j == 0:
+                    s1 = re.findall(pattern, row[0])
+                    magneticfield = float(s1[0].replace('KGs', ''))
+                    magneticfield_error = float(s1[1].replace('KGs', ''))
+                    #print(data[line, 0], "+/-", data[line, 1])
                 
-        else:
-
-            print("No files found.")
-     
+                
+                j += 1
+                
+            #    print("New line")
+            #print("New file")
+        j = 0    
         i += 1
 
-
+    #for o in range(7):
+    #    print("New line")
+    #    for u in range(29):
+    #        print(data[o , u])
+         
+ 
     return data, i
 
 def calc_resistivity ():
@@ -202,6 +219,8 @@ def calc_resistivity ():
     plt.errorbar(x_plt, y_plt, y_err_plt, fmt='x', capsize=5) 
     plt.grid()
     plt.title("Resistivity in dependence of the magnetic field strength")
+    plt.xlabel("B[T]")
+    plt.ylabel("Rho[Ohm]")
 
     plt.show()
     plt.clf()
@@ -226,7 +245,7 @@ def calc_Hall_coefficient():
     num = {}
 
 
-    data, n = readinvalues_Hallcoefficient(dirName)
+    data, n = readinvalues_Hall_coeff(dirName)
 
        
     #prints the content of every file in the directory dirName
@@ -258,17 +277,28 @@ def calc_Hall_coefficient():
     plt.ylabel("R_H[?]")
 
     plt.show()
-    plt.clf()
-
-    
-            
+    plt.clf()         
    
+    return
+
+def calc_tempdep_Hall_coefficient():
+
+    dirName = r"C:\Users\Flo\Desktop\LabCourse\Hall Effect\Temperature dependent data 22.01.20\Konny"
+
+    data = {}
+
+    data = readinvalues_Hall_coeff(dirName)
+
+ 
+
+
     return
 
 def main():
         
     #calc_resistivity()
     calc_Hall_coefficient()
+    #calc_tempdep_Hall_coefficient()
 
     
 if __name__ == "__main__" :
