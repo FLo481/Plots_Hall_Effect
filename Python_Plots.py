@@ -58,14 +58,13 @@ def deriv_of_rho(derive_by, point1, point2, point3):
         result = del_rho.evalf(subs={R_12_43: point1, R_14_23: point2, d: point3})
 
     else:
-        print("Derivative has to be with respect to R_12_43 or R_14_23!")
+        print("Derivative has to be with respect to R_12_43 or R_14_23 or d!")
         result = None
 
     return result
 
 def readinvalues_Hall_coeff(dirName):
 
-    s = math.sqrt(10) #to get the standard error instead of the standard deviation
     data = {}
     i = 0 #counts the files
     j = 0 #for skipping the first two lines
@@ -84,13 +83,14 @@ def readinvalues_Hall_coeff(dirName):
         with open(dirName + "\\" + file) as f:
             reader = csv.reader(f, delimiter = '\t')
             for row in reader:
-                if j > 1 and float(row[0]) != 0.0:
-                    data[line, 0] = magneticfield
-                    data[line, 1] = magneticfield_error
-                    for k in range (2, 29):
-                        data[line, k] = float(row[k - 2])
-                        #print(data[line, k])
-                    line += 1
+                if j > 1:
+                    if float(row[0]) != 0.0:
+                        data[line, 0] = magneticfield
+                        data[line, 1] = magneticfield_error
+                        for k in range (2, 29):
+                            data[line, k] = float(row[k - 2])
+                            #print(data[line, k])
+                        line += 1
   
                 elif j == 0:
                     s1 = re.findall(pattern, row[0])
@@ -106,13 +106,20 @@ def readinvalues_Hall_coeff(dirName):
         j = 0    
         i += 1
 
-    #for o in range(7):
-    #    print("New line")
+    #replace all 0.0 error with 0.001
+    for o in range(line - 1):
+        for u in range(3,29):
+            if u % 2 == 0:
+                if data[o, u] == 0.0:
+                    data[o, u] = 0.001
+
+    #for o in range(6):
+    #    print("Line %d" % o)
     #    for u in range(29):
     #        print(data[o , u])
          
  
-    return data, i
+    return data, i, line
 
 def calc_resistivity ():
 
@@ -220,7 +227,7 @@ def calc_resistivity ():
     plt.grid()
     plt.title("Resistivity in dependence of the magnetic field strength")
     plt.xlabel("B[T]")
-    plt.ylabel("Rho[Ohm]")
+    plt.ylabel(r"$\rho$ $[\mu m$ $\Omega]$")
 
     plt.show()
     plt.clf()
@@ -245,7 +252,7 @@ def calc_Hall_coefficient():
     num = {}
 
 
-    data, n = readinvalues_Hall_coeff(dirName)
+    data, n, j = readinvalues_Hall_coeff(dirName)
 
        
     #prints the content of every file in the directory dirName
@@ -286,10 +293,19 @@ def calc_tempdep_Hall_coefficient():
     dirName = r"C:\Users\Flo\Desktop\LabCourse\Hall Effect\Temperature dependent data 22.01.20\Konny"
 
     data = {}
+    x_plt = []
+    y_plt = []
+    y_err_plt = []
 
-    data = readinvalues_Hall_coeff(dirName)
+    data, i, j = readinvalues_Hall_coeff(dirName)
 
- 
+    print("Number of lines", j)
+
+
+
+    for l in range (j):
+        x_plt.append(data[l, 2])
+        
 
 
     return
