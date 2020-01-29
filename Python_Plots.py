@@ -5,6 +5,15 @@ import matplotlib.pyplot as plt
 import os
 import sympy as sym
 import csv
+import scipy.optimize
+
+def fit_func1(x, a):
+
+   return a*x
+
+def fit_func2(x, a):
+
+    return np.exp(a*x)
 
 def uncertpropdiv(num, num_sigma, denom, denom_sigma):
     value = num/denom
@@ -21,8 +30,8 @@ def uncertpropadd(a_sigma, b_sigma, c_sigma, d_sigma):
     return math.sqrt(a_sigma**2 + b_sigma**2 + c_sigma**2 + d_sigma**2)
 
 def function_f(x):
-    result = 1/math.cosh(math.log(x)/2.403)
-    return result
+    
+    return 1/math.cosh(math.log(x)/2.403)
 
 def calc_V_H(V_antiparallel, V_parallel):
 
@@ -66,6 +75,7 @@ def deriv_of_rho(derive_by, point1, point2, point3):
 def readinvalues_Hall_coeff(dirName):
 
     data = {}
+    s = np.sqrt(10)
     i = 0 #counts the files
     j = 0 #for skipping the first two lines
     line = 0 #counts the lines in a file
@@ -85,10 +95,13 @@ def readinvalues_Hall_coeff(dirName):
             for row in reader:
                 if j > 1:
                     if float(row[0]) != 0.0:
-                        data[line, 0] = magneticfield
-                        data[line, 1] = magneticfield_error
+                        data[line, 0] = magneticfield * 1E-1
+                        data[line, 1] = magneticfield_error * 1E-1
                         for k in range (2, 29):
-                            data[line, k] = float(row[k - 2])
+                            if k > 2:
+                                data[line, k] = float(row[k - 2]) * 1E-3
+                            else:
+                                data[line, k] = float(row[k - 2])
                             #print(data[line, k])
                         line += 1
   
@@ -111,8 +124,11 @@ def readinvalues_Hall_coeff(dirName):
         for u in range(3,29):
             if u % 2 == 0:
                 if data[o, u] == 0.0:
-                    data[o, u] = 0.001
+                    data[o, u] = 0.001 * 1E-3/s
+                else:
+                    data[o, u] = data[o, u] * 1E-3/s
 
+   
     #for o in range(6):
     #    print("Line %d" % o)
     #    for u in range(29):
@@ -236,20 +252,25 @@ def calc_resistivity ():
 
 def calc_Hall_coefficient():
 
-    #electric charge
-    e = 16.022E-19
     d = 350E-6
     d_sigma = 25E-6
-    s = math.sqrt(10) #to get the standard error instead of the standard deviation
 
     dirName = r"C:\Users\Flo\Desktop\LabCourse\Hall Effect\Hall coefficient data 17.01.20\Flo"
     
     data = {}
-    x_plt = []
-    y_plt = []
-    y_err_plt = []
+    x_plt_1 = []
+    y_plt_1 = []
+    y_err_plt_1 = []
+    x_temp = []
+    y_temp = []
+    y_err_temp = []
+    x_plt_2 = np.empty(9, dtype = float)
+    y_plt_2 = np.empty(9, dtype = float)
+    y_err_plt_2 = np.empty(9, dtype = float)
     denom = {}
     num = {}
+    I_x = []
+    I_x_value = 0
 
 
     data, n, j = readinvalues_Hall_coeff(dirName)
@@ -263,25 +284,72 @@ def calc_Hall_coefficient():
     
     #calculate Hall coefficient
 
-    for l in range(n):
-        x_plt.append(data[l, 0]*1E-1)
-        denom[l, 0] = data[l, 3] * data[l, 0] * 1E-1
-        denom[l, 1] = uncertpropmult(data[l, 0], data[l, 1]/s, data[l, 3], data[l, 4]/s)
-        num[l, 0] = 0.25*(calc_V_H(data[l, 9], data[l, 11])+calc_V_H(data[l, 13], data[l, 15])+calc_V_H(data[l, 21], data[l, 23])+calc_V_H(data[l, 25], data[l, 27]))*d
-        num[l, 1] = uncertpropmult(num[l, 0], uncertpropadd(0.5*uncertpropadd(data[l, 10]/s, data[l, 12]/s, 0, 0), 0.5*uncertpropadd(data[l, 14]/s, data[l, 16]/s, 0, 0), 0.5*uncertpropadd(data[l, 22]/s, data[l, 24]/s, 0, 0), 0.5*uncertpropadd(data[l, 26]/s, data[l, 28]/s, 0, 0)) , d, d_sigma)
-        y_plt.append(num[l, 0]/denom[l, 0])
-        y_err_plt.append(uncertpropdiv(num[l, 0], num[l, 1], denom[l, 0], denom[l, 1]))
+    for l in range(1,n):
+        x_plt_1.append(data[l, 0])
+        denom[l, 0] = data[l, 3] * data[l, 0] 
+        denom[l, 1] = uncertpropmult(data[l, 0], data[l, 1], data[l, 3], data[l, 4])
+        num[l, 0] = 0.25*(calc_V_H(data[l, 9], data[l, 11]) + calc_V_H(data[l, 13], data[l, 15]) + calc_V_H(data[l, 21], data[l, 23]) + calc_V_H(data[l, 25], data[l, 27]))*d
+        num[l, 1] = uncertpropmult(num[l, 0]/d, 0.25*uncertpropadd(0.5*uncertpropadd(data[l, 10], data[l, 12], 0, 0), 0.5*uncertpropadd(data[l, 14], data[l, 16], 0, 0), 0.5*uncertpropadd(data[l, 22], data[l, 24], 0, 0), 0.5*uncertpropadd(data[l, 26], data[l, 28], 0, 0)) , d, d_sigma)
+        y_plt_1.append(num[l, 0]/denom[l, 0])
+        y_err_plt_1.append(uncertpropdiv(num[l, 0], num[l, 1], denom[l, 0], denom[l, 1]))
+        x_temp.append(data[l, 0])
+        y_temp.append(0.25*(calc_V_H(data[l, 9], data[l, 11]) + calc_V_H(data[l, 13], data[l, 15]) + calc_V_H(data[l, 21], data[l, 23]) + calc_V_H(data[l, 25], data[l, 27])))
+        y_err_temp.append(0.25*uncertpropadd(0.5*uncertpropadd(data[l, 10], data[l, 12], 0, 0), 0.5*uncertpropadd(data[l, 14], data[l, 16], 0, 0), 0.5*uncertpropadd(data[l, 22], data[l, 24], 0, 0), 0.5*uncertpropadd(data[l, 26], data[l, 28], 0,0)))
         #print("R_H =", y_plt[l], "+/-", y_err_plt[l])
 
+    x_plt_2[:] = x_temp
+    y_plt_2[:] = y_temp
+    y_err_plt_2[:] = y_err_temp
+
+   
+
     #removes the first value, because it has a huge error bar
-    del x_plt[0]
-    del y_plt[0]
-    del y_err_plt[0]
-    plt.errorbar(x_plt, y_plt, y_err_plt, fmt='x', capsize=5) 
+    #del x_plt_1[0]
+    #del y_plt_1[0]
+    #del y_err_plt_1[0]
+
+    plt.errorbar(x_plt_1, y_plt_1, y_err_plt_1, fmt='x', capsize=5)
     plt.grid()
-    plt.title("Hall coefficient in dependence of the magnetic field")
+    plt.title("Hall coefficient")
     plt.xlabel("B[T]")
-    plt.ylabel("R_H[?]")
+    plt.ylabel(r"$\mathrm{R}_{\mathrm{H}}[?]$")
+
+    fig, (ax1, ax2) = plt.subplots(2)
+
+    ax1.errorbar(x_plt_2, y_plt_2, y_err_plt_2, fmt='x', capsize=5)
+    params, params_cov = scipy.optimize.curve_fit(fit_func1, x_plt_2, y_plt_2, sigma = y_err_plt_2, absolute_sigma = True)
+    ax1.plot(x_plt_2, fit_func1(x_plt_2, params[0]))
+    ax1.grid()
+    ax1.title.set_text("Hall voltage")
+    ax1.set_xlabel("B[T]")
+    ax1.set_ylabel(r"$\mathrm{V}_{\mathrm{H}}$[V]")
+
+    ax2.errorbar(x_plt_2, y_plt_2 - fit_func1(x_plt_2, params[0]), y_err_plt_2, fmt='o', capsize=5)
+    ax2.axhline(y=0.0, xmin=0.0, xmax=1.0, color='r')
+    ax2.title.set_text(r"Residuals of $V_H$ plot")
+
+    perr = np.sqrt(np.diag(params_cov)/10)
+    print("a =", params[0], "+/-", perr[0])
+
+    #calculation of R_H with the slope in the V_H(B) diagram
+
+    for j in range(0,len(x_plt_2)):
+        I_x.append(data[j, 3])
+        I_x_value += I_x[j]
+
+    I_x_value = I_x_value/len(I_x)
+    
+    print("R_H =", params[0]*d/I_x_value)
+
+
+
+    #plt.errorbar(x_plt, y_plt, y_err_plt, fmt='x', capsize=5) 
+    #plt.grid()
+    #plt.title("Hall coefficient in dependence of the magnetic field")
+    #plt.xlabel("B[T]")
+    #plt.ylabel("R_H[?]")
+
+    fig.tight_layout()
 
     plt.show()
     plt.clf()         
@@ -290,23 +358,116 @@ def calc_Hall_coefficient():
 
 def calc_tempdep_Hall_coefficient():
 
-    dirName = r"C:\Users\Flo\Desktop\LabCourse\Hall Effect\Temperature dependent data 22.01.20\Konny"
+    d = 350E-6
+    d_sigma = 25E-6
+    T_0 = 273.15 #0° Celsius in Kelvin
+
+    dirName = r"C:\Users\Flo\Desktop\LabCourse\Hall Effect\Temperature dependent data 22.01.20\Flo"
 
     data = {}
-    x_plt = []
-    y_plt = []
-    y_err_plt = []
+    x_temp = []
+    y_temp = []
+    y_err_temp = []
+    denom = {}
+    num = {}
 
     data, i, j = readinvalues_Hall_coeff(dirName)
 
-    print("Number of lines", j)
+    x_plt = np.empty(j, dtype = float)
+    y_plt = np.empty(j, dtype = float)
+    y_err_plt = np.empty(j, dtype = float)
+
+    #print("Number of lines", j)
 
 
-
-    for l in range (j):
-        x_plt.append(data[l, 2])
+    for l in range (0, j):
+        x_temp.append(data[l, 2] + T_0)
+        denom[l, 0] = data[l, 3] * data[l, 0] 
+        denom[l, 1] = uncertpropmult(data[l, 0], data[l, 1], data[l, 3], data[l, 4])
+        num[l, 0] = 0.25*(calc_V_H(data[l, 9], data[l, 11]) + calc_V_H(data[l, 13], data[l, 15]) + calc_V_H(data[l, 21], data[l, 23]) + calc_V_H(data[l, 25], data[l, 27]))*d
+        num[l, 1] = uncertpropmult(num[l, 0]/d, 0.25*uncertpropadd(0.5*uncertpropadd(data[l, 10], data[l, 12], 0, 0), 0.5*uncertpropadd(data[l, 14], data[l, 16], 0, 0), 0.5*uncertpropadd(data[l, 22], data[l, 24], 0, 0), 0.5*uncertpropadd(data[l, 26], data[l, 28], 0, 0)) , d, d_sigma)
+        y_temp.append(num[l, 0]/denom[l, 0])
+        y_err_temp.append(uncertpropdiv(num[l, 0], num[l, 1], denom[l, 0], denom[l, 1]))
         
 
+    x_plt[:] = x_temp
+    y_plt[:] = y_temp
+    y_err_plt[:] = y_err_temp
+
+
+    plt.errorbar(x_plt, y_plt, y_err_plt, fmt='x', capsize=5) 
+    plt.grid()
+    plt.title("Hall coefficient in dependence of the temperature")
+    plt.xlabel("T[K]")
+    plt.ylabel(r"$R_H[m^3$ $C^{-1}$]")
+
+    plt.show()
+    plt.clf()
+      
+    return
+
+def calc_tempdep_resistivity():
+
+    d_sample = 350E-6 
+    d_sample_sigma = 25E-6
+    T_0 = 273.15
+    Pi = math.pi
+    ln = math.log
+
+    data = {}
+
+    R_12_43, R_14_23, d = sym.symbols('R_12_43 R_14_23 d')
+
+    dirName = r"C:\Users\Flo\Desktop\LabCourse\Hall Effect\Temperature dependent data 22.01.20\Flo"
+
+    data, n, j = readinvalues_Hall_coeff(dirName)
+
+    x_temp = []
+    y_temp = []
+    y_err_temp = []
+    x_plt = np.empty(j, dtype = float)
+    y_plt = np.empty(j, dtype = float)
+    y_err_plt = np.empty(j, dtype = float)
+
+    R_B_12_43 = {}
+    R_B_14_23 = {}
+    R_B_21_34 = {}
+    R_B_41_32 = {}
+    rho = {}
+    rho_reverse = {}
+
+
+    for l in range(j):
+        R_B_12_43[l, 0] = data[l, 5]/data[l, 3] #>0
+        R_B_12_43[l, 1] = uncertpropdiv(data[l, 5], data[l, 6], data[l, 3], data[l, 4])
+        R_B_14_23[l, 0] = data[l, 7]/data[l, 3] #>0
+        R_B_14_23[l, 1] = uncertpropdiv(data[l, 7], data[l, 8], data[l, 3], data[l, 4])
+        R_B_21_34[l, 0] = data[l, 17]/data[l, 3]
+        R_B_21_34[l, 1] = uncertpropdiv(data[l, 17], data[l, 18], data[l, 3], data[l, 4])
+        R_B_41_32[l, 0] = data[l, 19]/data[l, 3]
+        R_B_41_32[l, 1] = uncertpropdiv(data[l, 19], data[l, 20], data[l, 3], data[l, 4])
+
+    for l in range(j):
+        x_temp.append(data[l, 2] + T_0)
+        rho[l, 0] = Pi*d_sample/(2*ln(2))*(R_B_12_43[l, 0]+R_B_14_23[l, 0])*function_f(R_B_12_43[l, 0]/R_B_14_23[l, 0])
+        rho[l, 1] = math.sqrt((deriv_of_rho(R_12_43, R_B_12_43[l, 0], R_B_14_23[l, 0], d_sample)*R_B_12_43[l, 1])**2 + (deriv_of_rho(R_14_23, R_B_12_43[l, 0], R_B_14_23[l, 0], d_sample)*R_B_14_23[l, 1])**2 + (deriv_of_rho(d, R_B_12_43[l, 0], R_B_14_23[l, 0], d_sample)*d_sample_sigma)**2)
+        rho_reverse[l, 0] = Pi*d_sample/(2*ln(2))*(R_B_21_34[l, 0]+R_B_41_32[l, 0])*function_f(R_B_21_34[l, 0]/R_B_41_32[l, 0])
+        rho_reverse[l, 1] = math.sqrt((deriv_of_rho(R_12_43, R_B_21_34[l, 0], R_B_41_32[l, 0], d_sample)*R_B_21_34[l, 1])**2 + (deriv_of_rho(R_14_23, R_B_21_34[l, 0], R_B_41_32[l, 0], d_sample)*R_B_41_32[l, 1])**2 + (deriv_of_rho(R_14_23, R_B_21_34[l, 0], R_B_41_32[l, 0], d_sample)*d_sample_sigma)**2)
+        y_temp.append(0.5*(rho[l, 0] + rho_reverse[l, 0]))
+        y_err_temp.append(0.5*uncertpropadd(rho[l, 1], rho_reverse[l, 1], 0, 0))
+
+    x_plt[:] = x_temp
+    y_plt[:] = y_temp
+    y_err_plt[:] = y_err_temp
+
+    plt.errorbar(x_plt, y_plt, y_err_plt, fmt='x', capsize=5) 
+    plt.grid()
+    plt.title("Resistivity in dependence of the temperature")
+    plt.xlabel("T[K]")
+    plt.ylabel(r"$\rho$[$\mu m$ $\Omega$]")
+
+    plt.show()
+    plt.clf()    
 
     return
 
@@ -315,7 +476,7 @@ def main():
     #calc_resistivity()
     calc_Hall_coefficient()
     #calc_tempdep_Hall_coefficient()
-
+    #calc_tempdep_resistivity()
     
 if __name__ == "__main__" :
     main()
