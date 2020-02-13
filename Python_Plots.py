@@ -12,9 +12,9 @@ def fit_func1(x, a):
 
    return a*x
 
-def fit_func2(x, a, b):
+def fit_func2(x, a, b, c):
 
-    return a*x**(3/2)+b
+    return a*(x-b)**(3/2)+c
 
 def fit_func3(x, a):
 
@@ -266,15 +266,16 @@ def calc_resistivity ():
     y_plt[:] = y_temp
     y_err_plt[:] = y_err_temp
     
-    plt.errorbar(x_plt * 1E-1, y_plt * 1E6, y_err_plt * 1E6, fmt='x', capsize=5, markersize=11) 
+    plt.errorbar(x_plt * 1E-1, y_plt * 1E6, y_err_plt * 1E6, fmt='x', capsize=5, markersize=11, label="Resistivity at constant temperature") 
     params, params_cov = scipy.optimize.curve_fit(fit_func3, x_plt * 1E-1, y_plt* 1E6, sigma = y_err_plt * 1E6, absolute_sigma = True)
-    plt.plot(x_plt * 1E-1, fit_func3(x_plt * 1E-1, params[0]), label= r"linear fit $y=ax$")
+    plt.plot(x_plt * 1E-1, fit_func3(x_plt * 1E-1, params[0]), label= r"constant fit $y=a$")
     #plt.axhline(y=params[0], xmin=0.0, xmax=1.0, color='r')
     plt.grid()
     #plt.title("Resistivity in dependence of the magnetic field strength")
     plt.xlabel("Magnetic field [T]")
     plt.ylabel(r"Resistivity [$\mu$m $\Omega$]")
     plt.ylim([195, 235])
+    plt.legend()
 
     perr = np.sqrt(np.diag(params_cov))/np.sqrt(len(x_plt))
     print("Resistivity =", params[0], "+/-", perr[0], r"$\mu$m $\Omega$")
@@ -357,38 +358,39 @@ def calc_Hall_coefficient():
 
     ##Plot for paper
     ##neglecting the errorbars, since they are pretty small
-    plt.errorbar(x_plt, y_plt_2 * 1E3, fmt='x', label="Hall voltage", markersize=11)
+    plt.errorbar(x_plt, y_plt_2 * 1E3, fmt='x', label="Hall voltage at constant temperature", markersize=11)
     params, params_cov = scipy.optimize.curve_fit(fit_func1, x_plt, y_plt_2* 1E3, sigma = y_err_plt_2* 1E3, absolute_sigma = True)
     plt.plot(x_plt, fit_func1(x_plt, params[0]), label= r"linear fit $y=ax$")
     plt.grid()
     #plt.title("Hall effect in a doped GaAs semiconductor")
     plt.xlabel("Magnetic field [T]")
     plt.ylabel("Hall voltage [mV]")
+    plt.legend()
 
 
     fig, (ax1, ax2) = plt.subplots(2)
 
     #Plots the Hall voltage
     #neglecting the errorbars, since they are pretty small
-    ax1.errorbar(x_plt, y_plt_2, fmt='o', capsize=5, label="Measured Hall voltage")
-    params, params_cov = scipy.optimize.curve_fit(fit_func1, x_plt, y_plt_2, sigma = y_err_plt_2, absolute_sigma = True)
+    ax1.errorbar(x_plt, y_plt_2 * 1E3, fmt='x', markersize=11, capsize=5, label="Measured Hall voltage")
+    params, params_cov = scipy.optimize.curve_fit(fit_func1, x_plt, y_plt_2 * 1E3, sigma = y_err_plt_2 * 1E3, absolute_sigma = True)
     ax1.plot(x_plt, fit_func1(x_plt, params[0]), label= r"linear fit $y=ax$")
     ax1.grid()
-    ax1.title.set_text("Hall voltage")
+    #ax1.title.set_text("Hall voltage")
     ax1.set_xlabel("Magnetic field [T]")
-    ax1.set_ylabel(r"$\mathrm{V}_{\mathrm{H}}$[V]")
+    ax1.set_ylabel("Hall voltage [mV]")
     ax1.legend()
 
-    ax2.errorbar(x_plt, y_plt_2 - fit_func1(x_plt, params[0]), y_err_plt_2, fmt='x', capsize=5, label = "Difference of the taken data and the fit")
+    ax2.errorbar(x_plt, y_plt_2 * 1E3 - fit_func1(x_plt, params[0]), y_err_plt_2 * 1E3, fmt='x', capsize=5, markersize=11, label = "Residuals")
     ax2.axhline(y=0.0, xmin=0.0, xmax=1.0, color='r')
-    ax2.title.set_text(r"Residuals of $V_H$ plot")
-    ax2.set_xlabel("B[T]")
-    ax2.set_ylabel(r"$\Delta y$[mV]")
+    #ax2.title.set_text(r"Residuals of $V_H$ plot")
+    ax2.set_xlabel("Magnetic field [T]")
+    ax2.set_ylabel("data - fit [mV]")
     ax2.legend()
 
     #standard deviation = sqrt(covariance matrix elements)
     perr = np.sqrt(np.diag(params_cov))/np.sqrt(len(x_plt))
-    print("a =", params[0]*1E3, "+/-", perr[0]*1E3, "mV/T")
+    print("a =", params[0], "+/-", perr[0], "mV/T")
 
     #calculation of R_H with the slope in the V_H(B) diagram
 
@@ -405,7 +407,7 @@ def calc_Hall_coefficient():
     numerator_sigma = 0
     numerator_sigma = uncertpropmult(params[0], perr[0], d, d_sigma)
     
-    print("R_H =", params[0]*d/I_x_value *1E6, "+/-", uncertpropdiv(params[0]*d, numerator_sigma, I_x_value, I_x_value_sigma) *1E6, "cm^3/C")
+    print("R_H =", params[0]*d/I_x_value * 1E3, "+/-", uncertpropdiv(params[0]*d, numerator_sigma, I_x_value, I_x_value_sigma) * 1E3, "cm^3/C")
 
     #Chi squared test
 
@@ -413,7 +415,7 @@ def calc_Hall_coefficient():
     fit[:] = fit_func1(x_plt, params[0])
 
     for l in range(0, len(y_plt_2)):
-        chi_squared += (y_plt_2[l] - fit[l])**2/(y_err_plt_2[l])**2 
+        chi_squared += (y_plt_2[l] * 1E3 - fit[l])**2/(y_err_plt_2[l] * 1E3)**2 
 
     print("Chi^2_red =" , chi_squared/(len(y_plt_2) - 1))
 
@@ -471,14 +473,14 @@ def calc_tempdep_Hall_coefficient():
 
     
     #1E6 factors are added for "optimal" units
-    plt.errorbar(x_plt, y_plt * 1E6, y_err_plt * 1E6, fmt='x', capsize=5, label = r"Hall coefficient $R_H$", markersize=11)
+    plt.errorbar(x_plt, y_plt * 1E6, y_err_plt * 1E6, fmt='x', capsize=5, label = r"Hall coefficient at constant magnetic field", markersize=11)
     params, params_cov = scipy.optimize.curve_fit(fit_func4, x_plt, y_plt * 1E6, sigma = y_err_plt * 1E6, absolute_sigma = True)
-    plt.plot(x_plt, fit_func4(x_plt, params[0], params[1]), label= r"linear fit $y=ax$")
+    #plt.plot(x_plt, fit_func4(x_plt, params[0], params[1]), label= r"linear fit $y=ax$")
     plt.grid()
     #plt.title("Doped GaAs sample at different temperatures")
     plt.xlabel("Temperature [K]")
     plt.ylabel(r"Hall coefficient [$cm^3$ $C^{-1}$]")
-    #plt.legend()
+    plt.legend()
 
     print("E/(2K_b) =", params[1])
     print("n =", (params[0]*293)**(3)*np.exp(-params[1]/293), "1/cm^3")
@@ -555,15 +557,15 @@ def calc_tempdep_resistivity():
     y_err_plt[:] = y_err_temp
 
     #we neglect the errorbars, since they are too small
-    plt.errorbar(x_plt, y_plt * 1E6, fmt='x', label="Resistivity", markersize=11) 
+    plt.errorbar(x_plt, y_plt * 1E6, fmt='x', label="Resistivity at constant magnetic field", markersize=11) 
     #plt.errorbar(x_plt, y_plt * 1E6, y_err_plt * 1E6, fmt='x', capsize=5, label="Resistivity") 
     params, params_cov = scipy.optimize.curve_fit(fit_func2, x_plt, y_plt * 1E6, sigma = y_err_plt * 1E6, absolute_sigma = True)
-    plt.plot(x_plt, fit_func2(x_plt, params[0], params[1]), label= r"$\rho = aT^{3/2}+b$ fit")
+    plt.plot(x_plt, fit_func2(x_plt, params[0], params[1], params[2]), label= r"$\rho = a(T-b)^{3/2}+c$ fit")
 
     #Chi squared calculation
 
     chi_squared_value = 0
-    fit[:] = fit_func2(x_plt, params[0], params[1])
+    fit[:] = fit_func2(x_plt, params[0], params[1], params[2])
 
     for k in range(len(x_plt)):
         #print("rho errors :", y_err_plt[k])
@@ -574,12 +576,13 @@ def calc_tempdep_resistivity():
     print("Chi^2_red =", chi_squared_value/(len(x_plt) - 2))
     print("a =", params[0])
     print("b =", params[1])
+    print("c =", params[2])
 
     plt.grid()
     #plt.title("GaAs sample at different temperatures")
     plt.xlabel("Temperature [K]")
     plt.ylabel(r"Resistivity [$\mu m$ $\Omega$]")
-    #plt.legend()
+    plt.legend()
 
     plt.show()
     plt.clf()    
@@ -590,8 +593,8 @@ def main():
         
     #calc_resistivity()
     #calc_Hall_coefficient()
-    #calc_tempdep_resistivity()
-    calc_tempdep_Hall_coefficient()
+    calc_tempdep_resistivity()
+    #calc_tempdep_Hall_coefficient()
     
 if __name__ == "__main__" :
     main()
